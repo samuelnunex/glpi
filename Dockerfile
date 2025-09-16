@@ -1,29 +1,35 @@
-# Usa imagem oficial PHP com Apache
-FROM php:8.2-apache
+FROM php:8.1-apache
 
-# Instala dependências necessárias
+# Instala dependências do sistema
 RUN apt-get update && apt-get install -y \
-    libpng-dev libjpeg-dev libfreetype6-dev \
-    libxml2-dev unzip curl git mariadb-client \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libxml2-dev \
+    unzip \
+    curl \
+    git \
+    mariadb-client \
+    locales \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install mysqli pdo pdo_mysql gd intl xml opcache \
+    && docker-php-ext-install -j$(nproc) mysqli pdo pdo_mysql gd intl xml opcache \
     && a2enmod rewrite \
     && rm -rf /var/lib/apt/lists/*
 
-# Define diretório de trabalho
-WORKDIR /var/www/html
+# Define a localidade para evitar warnings
+RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && locale-gen
 
-# Baixa versão mais recente do GLPI (10.0.15 no exemplo)
+# Baixa e instala o GLPI
+WORKDIR /var/www/html
 RUN curl -L -o glpi.tgz https://github.com/glpi-project/glpi/releases/download/10.0.15/glpi-10.0.15.tgz \
     && tar -xvzf glpi.tgz --strip-components=1 \
     && rm glpi.tgz
 
-# Ajusta permissões para o Apache rodar
+# Permissões
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html
 
-# Expõe a porta padrão do Apache
+# Expor a porta do Apache
 EXPOSE 80
 
-# Inicia o Apache no container
 CMD ["apache2-foreground"]
